@@ -21,3 +21,6 @@ Makefile
 
 #Archivos de log (omitidos por ser muy grandes)
 log/*
+
+#Ejecutable de la aplicacion (siempre puede ser generado)
+Graficador_Data_Logger_OM

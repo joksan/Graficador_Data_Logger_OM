@@ -8,11 +8,15 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = Graficador_Logger
+TARGET = Graficador_Data_Logger_OM
 TEMPLATE = app
 
 
 SOURCES +=\
-    Principal.cpp
+    Principal.cpp \
+    InterfazGrafica.cpp \
+    ManejoDatos.cpp
 
-HEADERS  +=
+HEADERS  += \
+    InterfazGrafica.h \
+    ManejoDatos.h
