@@ -19,4 +19,5 @@ SOURCES +=\
 
 HEADERS  += \
     InterfazGrafica.h \
-    ManejoDatos.h
+    ManejoDatos.h \
+    Principal.h
