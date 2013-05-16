@@ -1,4 +1,29 @@
 #include "InterfazGrafica.h"
+#include "ManejoDatos.h"
+
+WidgetGrafico::WidgetGrafico():
+MenuPrincipal(this)
+{
+  //Agrega las entradas a la barra de menu
+  QMenu *pMenuArchivo = MenuPrincipal.addMenu("&Archivo");
+  QMenu *pMenuDatos = MenuPrincipal.addMenu("&Datos");
+
+  setWindowTitle("Graficador Data Logger");
+
+  //Agrega los comandos en cada uno de los menus
+  pMenuArchivo->addAction("&Abrir captura de datos...", this, SLOT(AbrirArchivo()));
+  pMenuArchivo->addAction("&Salir", this, SLOT(salir()));
+  pMenuDatos->addAction("&Procesar Datos", this, SLOT(ProcesarDatos()));
+}
+
+void WidgetGrafico::AbrirArchivo() {
+  QString NombreArchivo;
+
+  NombreArchivo = QFileDialog::getOpenFileName(this, "Abrir archivo de log", NULL, "Archivos de log (*)");
+  if (NombreArchivo.isNull()) return;
+
+  LeerArchivo(NombreArchivo.toUtf8());
+}
 
 void WidgetGrafico::ProcesarDatos()
 {

@@ -4,14 +4,17 @@
 #include "Principal.h"
 #include "ManejoDatos.h"
 
-#include <unistd.h>
-
 vector<DATO_LECTURA> Lecturas;
-vector<DATO_GRAFICA> DatosGrafica;
+vector<DATO_GRAFICA> DatosGrafica1;
+vector<DATO_GRAFICA> DatosGrafica2;
+vector<DATO_GRAFICA> DatosGrafica3;
 
 bool LeerArchivo(const char *NombreArchivo)
 {
+  QProgressDialog DialogoProgreso(pVentanaPrincipal);
   FILE *pArchivo;
+  long LongitudArch;
+  long PosicionArch;
   char *PunteroRetorno;
   char LineaTexto[256];
   QString cadena;
@@ -20,23 +23,41 @@ bool LeerArchivo(const char *NombreArchivo)
   tm tmLectura;
   time_t TiempoLectura;
   DATO_LECTURA NuevoDato;
+  int i;
 
-//  QProgressBar BarraProgreso(pVentanaPrincipal);
-//  BarraProgreso.show();
-//  sleep(5);
+  //Inicializa la barra de progreso
+  DialogoProgreso.setWindowTitle("Abriendo archivo...");
+  DialogoProgreso.setMinimum(0);
+  DialogoProgreso.setMaximum(100);
 
+  //Abre el archivo para lectura
   pArchivo = fopen(NombreArchivo, "r");
   if (!pArchivo) {
     QMessageBox::critical(pVentanaPrincipal, "Error", "No se pudo abrir el archivo");
     return false;
   }
 
+  //Determina el tamaño del archivo
+  fseek(pArchivo, 0, SEEK_END);
+  LongitudArch = ftell(pArchivo);
+  fseek(pArchivo, 0, SEEK_SET);
+
   //Lee la primera linea de texto del archivo
   PunteroRetorno = fgets(LineaTexto, sizeof(LineaTexto), pArchivo);
   //Verifica que la lectura haya sido exitosa
   if (!PunteroRetorno || feof(pArchivo)) return false;
 
-  for (int i=0; i<10; i++) {
+  //Limpia el vector con las lecturas antes de iniciar
+  Lecturas.clear();
+
+  for (i=0; ; i++) {
+    //Actualiza la barra de progreso cada 1000 datos
+    if (i % 1000 == 0) {
+      PosicionArch = ftell(pArchivo);
+      DialogoProgreso.setValue(PosicionArch*100/LongitudArch);
+      qApp->processEvents();
+    }
+
     //Lee una linea de texto del archivo
     PunteroRetorno = fgets(LineaTexto, sizeof(LineaTexto), pArchivo);
     //Verifica que la lectura haya sido exitosa
@@ -159,14 +180,54 @@ bool LeerArchivo(const char *NombreArchivo)
 
     //---------------------------------------------------------------------------------------------
 
-//    cadena.sprintf("%.2f", NuevoDato.pf1);
-//    QMessageBox::information(pVentanaPrincipal, NULL, cadena);
-    //QMessageBox::information(pVentanaPrincipal, NULL, QString(asctime(localtime(&TiempoLectura))));
-
     //Agrega el elemento recien creado a la lista
     Lecturas.push_back(NuevoDato);
   }
 
+  cadena.sprintf("Se leyeron %i entradas", i);
+  QMessageBox::information(pVentanaPrincipal, "Apertura exitosa", cadena);
+
   fclose(pArchivo);
   return true;
+}
+
+void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica) {
+  unsigned int i, j;
+  unsigned int InicioPaquete, FinPaquete;
+  float ValorPromedio;
+  DATO_GRAFICA DatoNuevo;
+
+  if (CantidadPuntos > Lecturas.size())
+    CantidadPuntos = Lecturas.size();
+
+  DatosGrafica1.clear();
+  DatosGrafica2.clear();
+  DatosGrafica3.clear();
+
+  InicioPaquete = 0;
+
+  switch(TipoGrafica) {
+  case TG_Consumo:
+    for (i=1; i <= CantidadPuntos; i++) {
+      //Determina el indice del final del paquete
+      FinPaquete = i*Lecturas.size()/CantidadPuntos;
+
+      //Estima el valor promedio de todos los datos que componen el paquete
+      ValorPromedio = 0;
+      for (j=InicioPaquete; j<FinPaquete; j++)
+        ValorPromedio += Lecturas[j].kwhTotal;
+      ValorPromedio /= (FinPaquete - InicioPaquete);
+
+      //Almacena el dato del grafico en el vector correspondiente
+      DatoNuevo.valor = ValorPromedio;
+      DatoNuevo.tiempo = Lecturas[InicioPaquete].tiempo;
+      DatosGrafica1.push_back(DatoNuevo);
+
+      //El inicio del proximo paquete sera el limite final del anterior
+      InicioPaquete = FinPaquete;
+    }
+    break;
+  default:
+    break;
+  }
 }

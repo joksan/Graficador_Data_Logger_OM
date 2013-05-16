@@ -29,15 +29,20 @@ typedef struct
   float maxDmd;
 } DATO_LECTURA;
 
-extern vector<DATO_LECTURA> Lecturas;
-
 typedef struct
 {
   float valor;
   time_t tiempo;
 } DATO_GRAFICA;
 
-extern vector<DATO_GRAFICA> DatosGrafica;
+typedef enum {
+  TG_Consumo, TG_Tensiones, TG_Corrientes, TG_Potencia_Fase, TG_Potencia_Total, TG_Factor_Potencia
+} TIPO_GRAFICA;
+
+extern vector<DATO_LECTURA> Lecturas;
+extern vector<DATO_GRAFICA> DatosGrafica1;
+extern vector<DATO_GRAFICA> DatosGrafica2;
+extern vector<DATO_GRAFICA> DatosGrafica3;
 
 bool LeerArchivo(const char *NombreArchivo);
 
