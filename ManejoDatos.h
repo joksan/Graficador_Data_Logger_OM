@@ -31,7 +31,9 @@ typedef struct
 
 typedef struct
 {
-  float valor;
+  float maximo;
+  float minimo;
+  float promedio;
   time_t tiempo;
 } DATO_GRAFICA;
 
@@ -45,5 +47,6 @@ extern vector<DATO_GRAFICA> DatosGrafica2;
 extern vector<DATO_GRAFICA> DatosGrafica3;
 
 bool LeerArchivo(const char *NombreArchivo);
+void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica);
 
 #endif//MANEJO_DATOS_H

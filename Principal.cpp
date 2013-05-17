@@ -1,12 +1,12 @@
 #include "InterfazGrafica.h"
 #include "Principal.h"
 
-WidgetGrafico *pVentanaPrincipal = NULL;
+ClaseVentanaPrincipal *pVentanaPrincipal = NULL;
 
 int main(int argv, char **args)
 {
   QApplication app(argv, args);
-  WidgetGrafico VentanaPrincipal;
+  ClaseVentanaPrincipal VentanaPrincipal;
   pVentanaPrincipal = &VentanaPrincipal;
 
   VentanaPrincipal.setMinimumSize(600, 400);

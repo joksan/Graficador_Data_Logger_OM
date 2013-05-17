@@ -1,12 +1,15 @@
 #include "InterfazGrafica.h"
 #include "ManejoDatos.h"
 
-WidgetGrafico::WidgetGrafico():
-MenuPrincipal(this)
+//-------------------------------------------------------------------------------------------------
+
+ClaseVentanaPrincipal::ClaseVentanaPrincipal():
+ArregloVertical(this),
+BarraDesplazamiento(Qt::Horizontal)
 {
   //Agrega las entradas a la barra de menu
-  QMenu *pMenuArchivo = MenuPrincipal.addMenu("&Archivo");
-  QMenu *pMenuDatos = MenuPrincipal.addMenu("&Datos");
+  QMenu *pMenuArchivo = BarraMenu.addMenu("&Archivo");
+  QMenu *pMenuDatos = BarraMenu.addMenu("&Datos");
 
   setWindowTitle("Graficador Data Logger");
 
@@ -14,9 +17,17 @@ MenuPrincipal(this)
   pMenuArchivo->addAction("&Abrir captura de datos...", this, SLOT(AbrirArchivo()));
   pMenuArchivo->addAction("&Salir", this, SLOT(salir()));
   pMenuDatos->addAction("&Procesar Datos", this, SLOT(ProcesarDatos()));
+
+  ArregloVertical.setMenuBar(&BarraMenu);
+  ArregloVertical.addWidget(&AreaGrafico);
+  ArregloVertical.addWidget(&BarraDesplazamiento);
+
+  QObject::connect(&BarraDesplazamiento, SIGNAL(sliderMoved(int)), this, SLOT(update()));
+//  LeerArchivo("log/13_05_02");
+//  GenerarDatosGrafica(100, TG_Tensiones);
 }
 
-void WidgetGrafico::AbrirArchivo() {
+void ClaseVentanaPrincipal::AbrirArchivo() {
   QString NombreArchivo;
 
   NombreArchivo = QFileDialog::getOpenFileName(this, "Abrir archivo de log", NULL, "Archivos de log (*)");
@@ -25,14 +36,18 @@ void WidgetGrafico::AbrirArchivo() {
   LeerArchivo(NombreArchivo.toUtf8());
 }
 
-void WidgetGrafico::ProcesarDatos()
+void ClaseVentanaPrincipal::ProcesarDatos()
 {
+  GenerarDatosGrafica(10, TG_Tensiones);
+  update();
 }
 
-void WidgetGrafico::salir()
+void ClaseVentanaPrincipal::salir()
 {
   qApp->quit();
 }
+
+//-------------------------------------------------------------------------------------------------
 
 void WidgetGrafico::paintEvent(QPaintEvent *event)
 {
@@ -40,20 +55,43 @@ void WidgetGrafico::paintEvent(QPaintEvent *event)
 
   //Dibuja el area de trazado
   painter.begin(this);
+  painter.drawLine(0, 0, 100, 100);
   painter.fillRect(TrX(0), TrY(0), TrX(1)-TrX(0), TrY(1)-TrY(0), QColor(255, 255, 128));
   painter.setPen(Qt::black);
   painter.drawRect(TrX(0), TrY(0), TrX(1)-TrX(0), TrY(1)-TrY(0));
   painter.end();
 
   //Dibuja las divisiones de la grafica
-  DibujarEscalas(50, 100, 5, 500, 1000, 50);
+  DibujarEscalas(0, 100, 10, 0, 500, 50);
 
+  if (DatosGrafica1.empty()) return;
+
+  float maximo, minimo;
+
+  maximo=DatosGrafica1[0].maximo;
+  minimo=DatosGrafica1[0].minimo;
+  for (unsigned int i=1; i<DatosGrafica1.size(); i++) {
+    if (DatosGrafica1[i].maximo > maximo) maximo = DatosGrafica1[i].maximo;
+    if (DatosGrafica1[i].minimo < minimo) minimo = DatosGrafica1[i].minimo;
+  }
+
+//  QString cadena;
+  painter.begin(this);
+  painter.setPen(QPen(Qt::blue, 5));
+  for (unsigned int i=1; i<DatosGrafica1.size(); i++) {
+    painter.drawPoint(TrX(float(i)/DatosGrafica1.size()), TrY(DatosGrafica1[i].promedio/500));
+    //cadena.sprintf("%f", DatosGrafica1[i].promedio);
+    //painter.drawText(0, i*16, cadena);
+  }
+
+/*
   painter.begin(this);
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setPen(Qt::blue);
   painter.drawLine(TrX(0), TrY(0), TrX(1), TrY(1));
   painter.setPen(QPen(QColor(0, 128, 0), 10, Qt::SolidLine, Qt::RoundCap));
   painter.drawLine(TrX(0), TrY(0.5), TrX(1), TrY(1));
+*/
 
 /*
   QString cadena;

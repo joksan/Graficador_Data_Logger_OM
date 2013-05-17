@@ -29,6 +29,7 @@ bool LeerArchivo(const char *NombreArchivo)
   DialogoProgreso.setWindowTitle("Abriendo archivo...");
   DialogoProgreso.setMinimum(0);
   DialogoProgreso.setMaximum(100);
+  DialogoProgreso.show();
 
   //Abre el archivo para lectura
   pArchivo = fopen(NombreArchivo, "r");
@@ -194,7 +195,10 @@ bool LeerArchivo(const char *NombreArchivo)
 void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica) {
   unsigned int i, j;
   unsigned int InicioPaquete, FinPaquete;
+  float ValorActual;
   float ValorPromedio;
+  float ValorMaximo;
+  float ValorMinimo;
   DATO_GRAFICA DatoNuevo;
 
   if (CantidadPuntos > Lecturas.size())
@@ -207,19 +211,29 @@ void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica) 
   InicioPaquete = 0;
 
   switch(TipoGrafica) {
-  case TG_Consumo:
+  case TG_Tensiones:
     for (i=1; i <= CantidadPuntos; i++) {
       //Determina el indice del final del paquete
       FinPaquete = i*Lecturas.size()/CantidadPuntos;
 
-      //Estima el valor promedio de todos los datos que componen el paquete
-      ValorPromedio = 0;
-      for (j=InicioPaquete; j<FinPaquete; j++)
-        ValorPromedio += Lecturas[j].kwhTotal;
+      //Inicializa los valores maximo, minimo y promedio con el primer dato del paquete
+      ValorActual = Lecturas[InicioPaquete].v3;
+      ValorPromedio = ValorActual;
+      ValorMaximo = ValorActual;
+      ValorMinimo = ValorActual;
+
+      //Estima los valores maximo, minimo y promedio de todos los demas datos que componen el
+      //paquete (si es que existen datos adicionales)
+      for (j=InicioPaquete+1; j<FinPaquete; j++) {
+        ValorActual = Lecturas[j].v3;
+        ValorPromedio += ValorActual;
+        if (ValorActual > ValorMaximo) ValorMaximo = ValorActual;
+        if (ValorActual < ValorMinimo) ValorMinimo = ValorActual;
+      }
       ValorPromedio /= (FinPaquete - InicioPaquete);
 
       //Almacena el dato del grafico en el vector correspondiente
-      DatoNuevo.valor = ValorPromedio;
+      DatoNuevo.promedio = ValorPromedio;
       DatoNuevo.tiempo = Lecturas[InicioPaquete].tiempo;
       DatosGrafica1.push_back(DatoNuevo);
 
