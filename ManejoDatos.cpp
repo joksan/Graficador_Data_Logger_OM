@@ -8,6 +8,7 @@ vector<DATO_LECTURA> Lecturas;
 vector<DATO_GRAFICA> DatosGrafica1;
 vector<DATO_GRAFICA> DatosGrafica2;
 vector<DATO_GRAFICA> DatosGrafica3;
+bool ModificandoLecturas = false;
 
 bool LeerArchivo(const char *NombreArchivo)
 {
@@ -24,6 +25,10 @@ bool LeerArchivo(const char *NombreArchivo)
   time_t TiempoLectura;
   DATO_LECTURA NuevoDato;
   int i;
+
+  //Establece la bandera a verdadero para impedir que se generen datos de grafica por causa de
+  //otras funciones (como por ejemplo al redibujar las ventanas)
+  ModificandoLecturas = true;
 
   //Inicializa la barra de progreso
   DialogoProgreso.setWindowTitle("Abriendo archivo...");
@@ -54,6 +59,13 @@ bool LeerArchivo(const char *NombreArchivo)
   for (i=0; ; i++) {
     //Actualiza la barra de progreso cada 1000 datos
     if (i % 1000 == 0) {
+      //Antes de actualizar verifica si fue cancelada
+      if (DialogoProgreso.wasCanceled()) {
+        fclose(pArchivo);
+        Lecturas.clear();
+        ModificandoLecturas = false;
+        return false;
+      }
       PosicionArch = ftell(pArchivo);
       DialogoProgreso.setValue(PosicionArch*100/LongitudArch);
       qApp->processEvents();
@@ -189,25 +201,41 @@ bool LeerArchivo(const char *NombreArchivo)
   QMessageBox::information(pVentanaPrincipal, "Apertura exitosa", cadena);
 
   fclose(pArchivo);
+  ModificandoLecturas = false;
   return true;
 }
 
 void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica) {
   unsigned int i, j;
   unsigned int InicioPaquete, FinPaquete;
-  float ValorActual;
-  float ValorPromedio;
-  float ValorMaximo;
-  float ValorMinimo;
+  float ValorActual_v1;
+  float ValorActual_v2;
+  float ValorActual_v3;
+  float ValorPromedio_v1;
+  float ValorPromedio_v2;
+  float ValorPromedio_v3;
+  float ValorMaximo_v1;
+  float ValorMaximo_v2;
+  float ValorMaximo_v3;
+  float ValorMinimo_v1;
+  float ValorMinimo_v2;
+  float ValorMinimo_v3;
   DATO_GRAFICA DatoNuevo;
 
+  //Si se estan modificando las lecturas no se hara nada (impide el acceso concurrente)
+  if (ModificandoLecturas) return;
+
+  //Limita la cantidad de puntos a procesar a los que de por si existen en las lecturas
+  //(No se desea sobre muestrear, solo sub muestrear)
   if (CantidadPuntos > Lecturas.size())
     CantidadPuntos = Lecturas.size();
 
+  //Limpia los datos de grafica antes de comenzar
   DatosGrafica1.clear();
   DatosGrafica2.clear();
   DatosGrafica3.clear();
 
+  //Establece el offset inicial al comienzo de las lecturas
   InicioPaquete = 0;
 
   switch(TipoGrafica) {
@@ -217,25 +245,53 @@ void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica) 
       FinPaquete = i*Lecturas.size()/CantidadPuntos;
 
       //Inicializa los valores maximo, minimo y promedio con el primer dato del paquete
-      ValorActual = Lecturas[InicioPaquete].v3;
-      ValorPromedio = ValorActual;
-      ValorMaximo = ValorActual;
-      ValorMinimo = ValorActual;
+      ValorActual_v1 = Lecturas[InicioPaquete].v1;
+      ValorActual_v2 = Lecturas[InicioPaquete].v2;
+      ValorActual_v3 = Lecturas[InicioPaquete].v3;
+
+      ValorPromedio_v1 = ValorActual_v1;
+      ValorPromedio_v2 = ValorActual_v2;
+      ValorPromedio_v3 = ValorActual_v3;
+
+      ValorMaximo_v1 = ValorActual_v1;
+      ValorMaximo_v2 = ValorActual_v2;
+      ValorMaximo_v3 = ValorActual_v3;
+
+      ValorMinimo_v1 = ValorActual_v1;
+      ValorMinimo_v2 = ValorActual_v2;
+      ValorMinimo_v3 = ValorActual_v3;
 
       //Estima los valores maximo, minimo y promedio de todos los demas datos que componen el
       //paquete (si es que existen datos adicionales)
       for (j=InicioPaquete+1; j<FinPaquete; j++) {
-        ValorActual = Lecturas[j].v3;
-        ValorPromedio += ValorActual;
-        if (ValorActual > ValorMaximo) ValorMaximo = ValorActual;
-        if (ValorActual < ValorMinimo) ValorMinimo = ValorActual;
+        ValorActual_v1 = Lecturas[j].v1;
+        ValorActual_v2 = Lecturas[j].v2;
+        ValorActual_v3 = Lecturas[j].v3;
+
+        ValorPromedio_v1 += ValorActual_v1;
+        ValorPromedio_v2 += ValorActual_v2;
+        ValorPromedio_v3 += ValorActual_v3;
+
+        if (ValorActual_v1 > ValorMaximo_v1) ValorMaximo_v1 = ValorActual_v1;
+        if (ValorActual_v1 < ValorMinimo_v1) ValorMinimo_v1 = ValorActual_v1;
+        if (ValorActual_v2 > ValorMaximo_v2) ValorMaximo_v2 = ValorActual_v2;
+        if (ValorActual_v2 < ValorMinimo_v2) ValorMinimo_v2 = ValorActual_v2;
+        if (ValorActual_v3 > ValorMaximo_v3) ValorMaximo_v3 = ValorActual_v3;
+        if (ValorActual_v3 < ValorMinimo_v3) ValorMinimo_v3 = ValorActual_v3;
       }
-      ValorPromedio /= (FinPaquete - InicioPaquete);
+      ValorPromedio_v1 /= (FinPaquete - InicioPaquete);
+      ValorPromedio_v2 /= (FinPaquete - InicioPaquete);
+      ValorPromedio_v3 /= (FinPaquete - InicioPaquete);
 
       //Almacena el dato del grafico en el vector correspondiente
-      DatoNuevo.promedio = ValorPromedio;
       DatoNuevo.tiempo = Lecturas[InicioPaquete].tiempo;
+
+      DatoNuevo.promedio = ValorPromedio_v1;
       DatosGrafica1.push_back(DatoNuevo);
+      DatoNuevo.promedio = ValorPromedio_v2;
+      DatosGrafica2.push_back(DatoNuevo);
+      DatoNuevo.promedio = ValorPromedio_v3;
+      DatosGrafica3.push_back(DatoNuevo);
 
       //El inicio del proximo paquete sera el limite final del anterior
       InicioPaquete = FinPaquete;

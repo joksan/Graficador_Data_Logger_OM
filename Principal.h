@@ -3,6 +3,4 @@
 
 #include "InterfazGrafica.h"
 
-extern ClaseVentanaPrincipal *pVentanaPrincipal;
-
 #endif//PRINCIPAL_H

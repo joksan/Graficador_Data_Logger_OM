@@ -1,8 +1,6 @@
 #include "InterfazGrafica.h"
 #include "Principal.h"
 
-ClaseVentanaPrincipal *pVentanaPrincipal = NULL;
-
 int main(int argv, char **args)
 {
   QApplication app(argv, args);
