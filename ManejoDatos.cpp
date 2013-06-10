@@ -205,21 +205,23 @@ bool LeerArchivo(const char *NombreArchivo)
   return true;
 }
 
-void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica) {
+void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica, float & EscalaMaxima) {
   unsigned int i, j;
   unsigned int InicioPaquete, FinPaquete;
-  float ValorActual_v1;
-  float ValorActual_v2;
-  float ValorActual_v3;
-  float ValorPromedio_v1;
-  float ValorPromedio_v2;
-  float ValorPromedio_v3;
-  float ValorMaximo_v1;
-  float ValorMaximo_v2;
-  float ValorMaximo_v3;
-  float ValorMinimo_v1;
-  float ValorMinimo_v2;
-  float ValorMinimo_v3;
+  float ValorActual1;
+  float ValorActual2;
+  float ValorActual3;
+  float ValorPromedio1;
+  float ValorPromedio2;
+  float ValorPromedio3;
+  float ValorMaximo1;
+  float ValorMaximo2;
+  float ValorMaximo3;
+  float ValorMinimo1;
+  float ValorMinimo2;
+  float ValorMinimo3;
+  float MaximoDatos = 0.0;
+  float magnitud;
   DATO_GRAFICA DatoNuevo;
 
   //Si se estan modificando las lecturas no se hara nada (impide el acceso concurrente)
@@ -240,57 +242,73 @@ void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica) 
 
   switch(TipoGrafica) {
   case TG_Tensiones:
+    //Inicializa la escala maxima con el primer valor de las lecturas
+    MaximoDatos  = Lecturas[0].v1;
     for (i=1; i <= CantidadPuntos; i++) {
       //Determina el indice del final del paquete
       FinPaquete = i*Lecturas.size()/CantidadPuntos;
 
-      //Inicializa los valores maximo, minimo y promedio con el primer dato del paquete
-      ValorActual_v1 = Lecturas[InicioPaquete].v1;
-      ValorActual_v2 = Lecturas[InicioPaquete].v2;
-      ValorActual_v3 = Lecturas[InicioPaquete].v3;
+      //Inicializa los valores minimo, maximo y promedio con el primer dato del paquete
+      ValorActual1 = Lecturas[InicioPaquete].v1;
+      ValorActual2 = Lecturas[InicioPaquete].v2;
+      ValorActual3 = Lecturas[InicioPaquete].v3;
 
-      ValorPromedio_v1 = ValorActual_v1;
-      ValorPromedio_v2 = ValorActual_v2;
-      ValorPromedio_v3 = ValorActual_v3;
+      ValorMinimo1 = ValorActual1;
+      ValorMinimo2 = ValorActual2;
+      ValorMinimo3 = ValorActual3;
 
-      ValorMaximo_v1 = ValorActual_v1;
-      ValorMaximo_v2 = ValorActual_v2;
-      ValorMaximo_v3 = ValorActual_v3;
+      ValorMaximo1 = ValorActual1;
+      ValorMaximo2 = ValorActual2;
+      ValorMaximo3 = ValorActual3;
 
-      ValorMinimo_v1 = ValorActual_v1;
-      ValorMinimo_v2 = ValorActual_v2;
-      ValorMinimo_v3 = ValorActual_v3;
+      ValorPromedio1 = ValorActual1;
+      ValorPromedio2 = ValorActual2;
+      ValorPromedio3 = ValorActual3;
 
       //Estima los valores maximo, minimo y promedio de todos los demas datos que componen el
       //paquete (si es que existen datos adicionales)
       for (j=InicioPaquete+1; j<FinPaquete; j++) {
-        ValorActual_v1 = Lecturas[j].v1;
-        ValorActual_v2 = Lecturas[j].v2;
-        ValorActual_v3 = Lecturas[j].v3;
+        ValorActual1 = Lecturas[j].v1;
+        ValorActual2 = Lecturas[j].v2;
+        ValorActual3 = Lecturas[j].v3;
 
-        ValorPromedio_v1 += ValorActual_v1;
-        ValorPromedio_v2 += ValorActual_v2;
-        ValorPromedio_v3 += ValorActual_v3;
+        if (ValorActual1 < ValorMinimo1) ValorMinimo1 = ValorActual1;
+        if (ValorActual2 < ValorMinimo2) ValorMinimo2 = ValorActual2;
+        if (ValorActual3 < ValorMinimo3) ValorMinimo3 = ValorActual3;
 
-        if (ValorActual_v1 > ValorMaximo_v1) ValorMaximo_v1 = ValorActual_v1;
-        if (ValorActual_v1 < ValorMinimo_v1) ValorMinimo_v1 = ValorActual_v1;
-        if (ValorActual_v2 > ValorMaximo_v2) ValorMaximo_v2 = ValorActual_v2;
-        if (ValorActual_v2 < ValorMinimo_v2) ValorMinimo_v2 = ValorActual_v2;
-        if (ValorActual_v3 > ValorMaximo_v3) ValorMaximo_v3 = ValorActual_v3;
-        if (ValorActual_v3 < ValorMinimo_v3) ValorMinimo_v3 = ValorActual_v3;
+        if (ValorActual1 > ValorMaximo1) ValorMaximo1 = ValorActual1;
+        if (ValorActual2 > ValorMaximo2) ValorMaximo2 = ValorActual2;
+        if (ValorActual3 > ValorMaximo3) ValorMaximo3 = ValorActual3;
+
+        ValorPromedio1 += ValorActual1;
+        ValorPromedio2 += ValorActual2;
+        ValorPromedio3 += ValorActual3;
       }
-      ValorPromedio_v1 /= (FinPaquete - InicioPaquete);
-      ValorPromedio_v2 /= (FinPaquete - InicioPaquete);
-      ValorPromedio_v3 /= (FinPaquete - InicioPaquete);
+      ValorPromedio1 /= (FinPaquete - InicioPaquete);
+      ValorPromedio2 /= (FinPaquete - InicioPaquete);
+      ValorPromedio3 /= (FinPaquete - InicioPaquete);
+
+      //Determina el nuevo valor maximo detectado para todos los datos
+      if (ValorMaximo1 > MaximoDatos) MaximoDatos = ValorMaximo1;
+      if (ValorMaximo2 > MaximoDatos) MaximoDatos = ValorMaximo2;
+      if (ValorMaximo3 > MaximoDatos) MaximoDatos = ValorMaximo3;
 
       //Almacena el dato del grafico en el vector correspondiente
       DatoNuevo.tiempo = Lecturas[InicioPaquete].tiempo;
 
-      DatoNuevo.promedio = ValorPromedio_v1;
+      DatoNuevo.minimo = ValorMinimo1;
+      DatoNuevo.maximo = ValorMaximo1;
+      DatoNuevo.promedio = ValorPromedio1;
       DatosGrafica1.push_back(DatoNuevo);
-      DatoNuevo.promedio = ValorPromedio_v2;
+
+      DatoNuevo.minimo = ValorMinimo2;
+      DatoNuevo.maximo = ValorMaximo2;
+      DatoNuevo.promedio = ValorPromedio2;
       DatosGrafica2.push_back(DatoNuevo);
-      DatoNuevo.promedio = ValorPromedio_v3;
+
+      DatoNuevo.minimo = ValorMinimo3;
+      DatoNuevo.maximo = ValorMaximo3;
+      DatoNuevo.promedio = ValorPromedio3;
       DatosGrafica3.push_back(DatoNuevo);
 
       //El inicio del proximo paquete sera el limite final del anterior
@@ -299,5 +317,23 @@ void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica) 
     break;
   default:
     break;
+  }
+
+  //A continuacion se determinara la maxima escala que puede representar los numeros. Esta escala
+  //es un numero redondo (un digito significativo precedido o seguido de cualquier cantidad
+  //de ceros), que facilita el dibujado de escalas en el eje vertical
+  EscalaMaxima = 0.1;
+  magnitud = 0.1;
+  i = 0;
+
+  //El proceso persiste siempre que la escala maxima sea menor que el maximo de los datos
+  while (EscalaMaxima < MaximoDatos) {
+    //Con cada iteracion incrementa la escala maxima sumando la magnitud actual
+    EscalaMaxima += magnitud;
+
+    //Lleva una cuenta de las iteraciones, y cada 9 iteraciones incrementa la magnitud en 1 orden
+    i++;
+    if (i % 9 == 0) magnitud *= 10;
+
   }
 }

@@ -31,10 +31,10 @@ typedef struct
 
 typedef struct
 {
-  float maximo;
-  float minimo;
-  float promedio;
   time_t tiempo;
+  float minimo;
+  float maximo;
+  float promedio;
 } DATO_GRAFICA;
 
 typedef enum {
@@ -47,6 +47,6 @@ extern vector<DATO_GRAFICA> DatosGrafica2;
 extern vector<DATO_GRAFICA> DatosGrafica3;
 
 bool LeerArchivo(const char *NombreArchivo);
-void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica);
+void GenerarDatosGrafica(unsigned int CantidadPuntos, TIPO_GRAFICA TipoGrafica, float & EscalaMaxima);
 
 #endif//MANEJO_DATOS_H

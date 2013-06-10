@@ -18,4 +18,5 @@ int main(int argv, char **args)
  * - Consumo diario
  * - Grafico de ciclo de trabajo (muestra)
  * - Valor promedio de ciclo de trabajo
+ * - Obtencion de promedios y almacenamiento en tablas csv (para reporte de eficiencia)
 */

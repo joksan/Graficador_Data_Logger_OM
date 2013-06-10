@@ -65,8 +65,8 @@ void ClaseVentanaPrincipal::RedimensionarBarraDesplazamiento(int dimension, int 
 }
 
 void ClaseVentanaPrincipal::showEvent(QShowEvent *event) {
-  LeerArchivo("log/prueba");
-  //LeerArchivo("log/13_05_02");
+  //LeerArchivo("log/prueba");
+  LeerArchivo("log/13_05_02");
   AreaGrafico.ActualizarDatosGrafico();
 
   event->accept();
@@ -79,7 +79,8 @@ TipoGrafica(TG_Tensiones),
 escala(1.0),
 DimensionTotal(0),
 posicion(0),
-CantidadPuntos(0)
+nPuntosMostrados(0),
+MaximoVertical(0)
 {
 }
 
@@ -95,44 +96,70 @@ void WidgetGrafico::CambiarEscala(float valor)
 }
 
 void WidgetGrafico::ActualizarDatosGrafico() {
-  //Primeramente recorta la escala para impedir que se presenten mas valores que los que realmente
-  //existen en las lecturas
+  int AnchoAreaGrafico;
+
+  //Primeramente recorta la escala para impedir que se presenten en pantalla mas valores que los
+  //que realmente existen en las lecturas
   if (escala < 1.0) escala = 1.0;
+
+  //Luego se determina la anchura del area de grafico en pixeles, la cual es una fraccion de la
+  //anchura total de la ventana
+  AnchoAreaGrafico = width() / 1.2;
 
   //A continuacion calcula la magnitud total (en pixeles) del area de grafico. Notese que la escala
   //actua como un multiplicador que amplia proporcionalmente el area grafica de la ventana.
-  DimensionTotal = escala*width();
+  DimensionTotal = escala*AnchoAreaGrafico;
 
   //Se sub muestrean las lecturas procurando que se generen suficientes datos como para llenar la
   //dimension total del grafico (este proceso produce a lo sumo tantos puntos como lecturas se
   //tengan, dado que no se desea sobre muestrear)
-  GenerarDatosGrafica(DimensionTotal, TipoGrafica);
+  GenerarDatosGrafica(DimensionTotal, TipoGrafica, MaximoVertical);
 
   //Se verifica si se lograron crear tantos puntos como se solicitaron
   if (DatosGrafica1.size() == DimensionTotal)
-    //Si es asi, la cantidad de puntos a dibujar sera igual al ancho de la ventana (cada muestra
+    //Si es asi, la cantidad de puntos a mostrar sera igual al ancho de la ventana (cada muestra
     //se dibujara en una columna de 1 pixel)
-    CantidadPuntos = width();
+    nPuntosMostrados = AnchoAreaGrafico;
   else {
     //De no obtenerse la cantidad de puntos solicitados, entonces se determina la cantidad de
-    //puntos que terminaran por mostrarse
-    CantidadPuntos = DatosGrafica1.size()/escala;
+    //puntos que terminaran por mostrarse. La cantidad de puntos se estima de la siguiente manera
+    //por regla de tres:
+    //                   DatosGrafica1.size()
+    //nPuntosMostrados = -------------------- * AnchoAreaGrafico
+    //                      DimensionTotal
+    //Pero DimensionTotal = escala * AnchoAreaGrafico, con lo que se elimina el termino
+    //AnchoAreaGrafico. El resultado equivale a la fraccion de puntos que queda al dividir el total
+    //de puntos de la grafica entre la escala:
+    nPuntosMostrados = DatosGrafica1.size()/escala;
 
     //Si la cantidad de puntos que lograran mostrarse esta por debajo de 11 (10 intervalos),
-    //entonces se limita a esta misma cantidad y se ajustan tanto la escala como la dimension total
+    //entonces se limita esta cantidad y se ajustan tanto la escala como la dimension total
     //acordemente
-    if (CantidadPuntos < 11) {
-      CantidadPuntos = 11;
-      escala = DatosGrafica1.size()/11;
-      DimensionTotal = escala*width();
+    if (nPuntosMostrados < 11) {
+      if (DatosGrafica1.size() >= 11) {
+        //Se intentaran mostrar al menos 11 puntos siempre que haya esa cantidad, asimismo se
+        //ajusta la escala para visualizarlos todos
+        nPuntosMostrados = 11;
+        escala = float(DatosGrafica1.size())/11;
+      }
+      else {
+        //En caso que se tengan menos de 11 puntos, se mostrara el total disponible forzando una
+        //escala de 1.0 para que se muestren todos los datos
+        nPuntosMostrados = DatosGrafica1.size();
+        escala = 1.0;
+      }
+
+      //Se recalcula la dimension total
+      DimensionTotal = escala*AnchoAreaGrafico;
     }
   }
 
-//  QString Cadena;
-//  Cadena.sprintf("%li, %i", DatosGrafica1.size(), CantidadPuntos);
-//  QMessageBox::information(pVentanaPrincipal, NULL, Cadena);
-  pVentanaPrincipal->RedimensionarBarraDesplazamiento(DatosGrafica1.size() - CantidadPuntos,
-                                                      CantidadPuntos/2);
+  //Se actualiza la barra de desplazamiento para abarcar toda el area del grafico. Notese que al
+  //tamaño total se le resta el tamaño de la ventana, que en este caso es la cantidad de puntos
+  //mostrados. Asimismo se establece un tamaño de avance de pagina igual a un cuarto de la cantidad
+  //de puntos mostrados.
+  pVentanaPrincipal->RedimensionarBarraDesplazamiento(DatosGrafica1.size() - nPuntosMostrados,
+                                                      nPuntosMostrados/4);
 
   //Se redibuja el area de la ventana
   update();
@@ -173,6 +200,7 @@ void WidgetGrafico::wheelEvent(QWheelEvent * event)
 void WidgetGrafico::paintEvent(QPaintEvent *event)
 {
   QPainter painter;
+  QPainterPath Grafica1, Grafica2, Grafica3;
   unsigned int i;
 
   //Dibuja el area de trazado
@@ -183,50 +211,101 @@ void WidgetGrafico::paintEvent(QPaintEvent *event)
   painter.end();
 
   //Dibuja las divisiones de la grafica
-  DibujarEscalas(0, 100, 10, 0, 500, 50);
+  DibujarEscalas(0, 100, 10, 0, MaximoVertical, MaximoVertical/10);
 
+  //Si no hay datos disponibles termina el proceso
   if (DatosGrafica1.empty()) return;
 
-  float maximo, minimo;
-
-  maximo=DatosGrafica1[0].maximo;
-  minimo=DatosGrafica1[0].minimo;
-  for (unsigned int i=1; i<DatosGrafica1.size(); i++) {
-    if (DatosGrafica1[i].maximo > maximo) maximo = DatosGrafica1[i].maximo;
-    if (DatosGrafica1[i].minimo < minimo) minimo = DatosGrafica1[i].minimo;
-  }
-
+  //Inicia el proceso de dibujado
   painter.begin(this);
-  if (DatosGrafica1.size() < DimensionTotal) {
-    QPainterPath Curva1, Curva2, Curva3;
-    Curva1.moveTo(TrX(0), TrY(DatosGrafica1[posicion].promedio/500));
-    Curva2.moveTo(TrX(0), TrY(DatosGrafica2[posicion].promedio/500));
-    Curva3.moveTo(TrX(0), TrY(DatosGrafica3[posicion].promedio/500));
-    for (i=1; i<CantidadPuntos; i++) {
-      Curva1.lineTo(TrX(float(i)/(CantidadPuntos-1)),
-                   TrY(DatosGrafica1[i+posicion].promedio/500));
-      Curva2.lineTo(TrX(float(i)/(CantidadPuntos-1)),
-                   TrY(DatosGrafica2[i+posicion].promedio/500));
-      Curva3.lineTo(TrX(float(i)/(CantidadPuntos-1)),
-                   TrY(DatosGrafica3[i+posicion].promedio/500));
-    }
-    painter.setPen(QPen(Qt::red, 1));
-    painter.drawPath(Curva1);
-    painter.setPen(QPen(Qt::green, 1));
-    painter.drawPath(Curva2);
-    painter.setPen(QPen(Qt::blue, 1));
-    painter.drawPath(Curva3);
 
-    for (i=0; i<CantidadPuntos; i++) {
-      painter.setPen(QPen(Qt::red, 5));
-      painter.drawPoint(TrX(float(i)/(CantidadPuntos-1)),
-                        TrY(DatosGrafica1[i+posicion].promedio/500));
-      painter.setPen(QPen(Qt::green, 5));
-      painter.drawPoint(TrX(float(i)/(CantidadPuntos-1)),
-                        TrY(DatosGrafica2[i+posicion].promedio/500));
-      painter.setPen(QPen(Qt::blue, 5));
-      painter.drawPoint(TrX(float(i)/(CantidadPuntos-1)),
-                        TrY(DatosGrafica3[i+posicion].promedio/500));
+  //Se determina si el grafico se dibujara en forma sub-muestreada o muestra por muestra
+  if (DatosGrafica1.size() < DimensionTotal) {
+    //En caso que se dibuje muestra por muestra se dibujaran las trazas que conectan los puntos de
+    //las muestras y a continuacion se dibujaran los puntos sobre ellas
+
+    //Se inicializan los caminos de las trazas con sus primeros puntos
+    Grafica1.moveTo(TrX(0), TrY(DatosGrafica1[posicion].promedio/MaximoVertical));
+    Grafica2.moveTo(TrX(0), TrY(DatosGrafica2[posicion].promedio/MaximoVertical));
+    Grafica3.moveTo(TrX(0), TrY(DatosGrafica3[posicion].promedio/MaximoVertical));
+
+    //Se agregan los demas puntos a cada una de las trazas
+    for (i=1; i<nPuntosMostrados; i++) {
+      Grafica1.lineTo(TrX(float(i)/(nPuntosMostrados-1)),
+                      TrY(DatosGrafica1[i+posicion].promedio/MaximoVertical));
+      Grafica2.lineTo(TrX(float(i)/(nPuntosMostrados-1)),
+                      TrY(DatosGrafica2[i+posicion].promedio/MaximoVertical));
+      Grafica3.lineTo(TrX(float(i)/(nPuntosMostrados-1)),
+                      TrY(DatosGrafica3[i+posicion].promedio/MaximoVertical));
+    }
+
+    //Se dibujan las trazas segun sus colores
+    painter.setPen(QPen(Qt::red, 1));
+    painter.drawPath(Grafica1);
+    painter.setPen(QPen(Qt::green, 1));
+    painter.drawPath(Grafica2);
+    painter.setPen(QPen(Qt::blue, 1));
+    painter.drawPath(Grafica3);
+
+    //Se dibujan los puntos correspondientes a cada muestra
+    for (i=0; i<nPuntosMostrados; i++) {
+      painter.setPen(QPen(Qt::red, 3));
+      painter.drawPoint(TrX(float(i)/(nPuntosMostrados-1)),
+                        TrY(DatosGrafica1[i+posicion].promedio/MaximoVertical));
+      painter.setPen(QPen(Qt::green, 3));
+      painter.drawPoint(TrX(float(i)/(nPuntosMostrados-1)),
+                        TrY(DatosGrafica2[i+posicion].promedio/MaximoVertical));
+      painter.setPen(QPen(Qt::blue, 3));
+      painter.drawPoint(TrX(float(i)/(nPuntosMostrados-1)),
+                        TrY(DatosGrafica3[i+posicion].promedio/MaximoVertical));
+    }
+  }
+  else {
+    //En caso que se dibuje en forma sub muestreada se dibuja la traza que conecta los segmentos y
+    //a continuacion los segmentos verticales para indicar picos y valles
+
+    //Se inicializan los caminos de las trazas con sus primeros puntos
+    Grafica1.moveTo(TrX(0), TrY(DatosGrafica1[posicion].promedio/MaximoVertical));
+    Grafica2.moveTo(TrX(0), TrY(DatosGrafica2[posicion].promedio/MaximoVertical));
+    Grafica3.moveTo(TrX(0), TrY(DatosGrafica3[posicion].promedio/MaximoVertical));
+
+    //Se agregan los demas puntos a cada una de las trazas
+    for (i=1; i<nPuntosMostrados; i++) {
+      Grafica1.lineTo(TrX(float(i)/(nPuntosMostrados-1)),
+                      TrY(DatosGrafica1[i+posicion].promedio/MaximoVertical));
+      Grafica2.lineTo(TrX(float(i)/(nPuntosMostrados-1)),
+                      TrY(DatosGrafica2[i+posicion].promedio/MaximoVertical));
+      Grafica3.lineTo(TrX(float(i)/(nPuntosMostrados-1)),
+                      TrY(DatosGrafica3[i+posicion].promedio/MaximoVertical));
+    }
+
+    //Se dibujan las trazas segun sus colores
+    painter.setPen(QPen(Qt::red, 3));
+    painter.drawPath(Grafica1);
+    painter.setPen(QPen(Qt::green, 3));
+    painter.drawPath(Grafica2);
+    painter.setPen(QPen(Qt::blue, 3));
+    painter.drawPath(Grafica3);
+
+    for (i=0; i<nPuntosMostrados; i++) {
+/*
+      painter.setPen(QPen(Qt::red, 3));
+      painter.drawLine(TrX(float(i)/(nPuntosMostrados-1)),
+                       TrY(DatosGrafica1[i+posicion].maximo/MaximoVertical),
+                       TrX(float(i)/(nPuntosMostrados-1)),
+                       TrY(DatosGrafica1[i+posicion].minimo/MaximoVertical));
+*/
+      painter.setPen(QPen(Qt::green, 3));
+      painter.drawLine(TrX(float(i)/(nPuntosMostrados-1)),
+                       TrY(DatosGrafica2[i+posicion].maximo/MaximoVertical),
+                       TrX(float(i)/(nPuntosMostrados-1)),
+                       TrY(DatosGrafica2[i+posicion].minimo/MaximoVertical));
+
+      painter.setPen(QPen(Qt::blue, 3));
+      painter.drawLine(TrX(float(i)/(nPuntosMostrados-1)),
+                       TrY(DatosGrafica3[i+posicion].maximo/MaximoVertical),
+                       TrX(float(i)/(nPuntosMostrados-1)),
+                       TrY(DatosGrafica3[i+posicion].minimo/MaximoVertical));
     }
   }
 
